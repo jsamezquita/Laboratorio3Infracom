@@ -42,6 +42,7 @@ public class D extends Thread {
 	private static X509Certificate certSer;
 	private static KeyPair keyPairServidor;
 	private ThreadCargaCPU monitor;
+	private byte[] bytes;
 	
 	public static void init(X509Certificate pCertSer, KeyPair pKeyPairServidor, File pFile) {
 		certSer = pCertSer;
@@ -49,10 +50,11 @@ public class D extends Thread {
 		file = pFile;
 	}
 	
-	public D (Socket csP, int idP, ThreadCargaCPU monitorP) {
+	public D (Socket csP, int idP, ThreadCargaCPU monitorP,byte[] bytes) {
 		monitor = monitorP;
 		sc = csP;
 		dlg = new String("delegado " + idP + ": ");
+		this.bytes=bytes;
 		try {
 		mybyte = new byte[520]; 
 		mybyte = certSer.getEncoded();
@@ -62,14 +64,7 @@ public class D extends Thread {
 		}
 	}
 	
-	private boolean validoAlgHMAC(String nombre) {
-		return ((nombre.equals(S.HMACMD5) || 
-			 nombre.equals(S.HMACSHA1) ||
-			 nombre.equals(S.HMACSHA256) ||
-			 nombre.equals(S.HMACSHA384) ||
-			 nombre.equals(S.HMACSHA512)
-			 ));
-	}
+
 	
 	/*
 	 * Generacion del archivo log. 
@@ -93,8 +88,6 @@ public class D extends Thread {
 		String[] cadenas;
 		cadenas = new String[numCadenas];
 		String linea;
-		FileInputStream fis = null;
-		BufferedInputStream bis = null;
 	    System.out.println(dlg + "Empezando atencion.");
 	        try {
 	        	
@@ -113,123 +106,24 @@ public class D extends Thread {
 					cadenas[0] = dlg + REC + linea + "-continuando.";
 					System.out.println(cadenas[0]);
 				}
-				
+				linea = dc.readLine();
+
+				this.wait();
 				/***** Fase 2:  *****/
-				linea = dc.readLine();
-				cadenas[1] = "Fase2: ";
-				if (!(linea.contains(SEPARADOR) && linea.split(SEPARADOR)[0].equals(ALGORITMOS))) {
-					ac.println(ERROR);
-					sc.close();
-					throw new Exception(dlg + ERROR + REC + linea +"-terminando.");
-				}
-				
-				String[] algoritmos = linea.split(SEPARADOR);
-				if (!algoritmos[1].equals(S.DES) && !algoritmos[1].equals(S.AES) &&
-					!algoritmos[1].equals(S.BLOWFISH) && !algoritmos[1].equals(S.RC4)){
-					ac.println(ERROR);
-					sc.close();
-					throw new Exception(dlg + ERROR + "Alg.Simetrico" + REC + algoritmos + "-terminando.");
-				}
-				if (!algoritmos[2].equals(S.RSA) ) {
-					ac.println(ERROR);
-					sc.close();
-					throw new Exception(dlg + ERROR + "Alg.Asimetrico." + REC + algoritmos + "-terminando.");
-				}
-				if (!validoAlgHMAC(algoritmos[3])) {
-					ac.println(ERROR);
-					sc.close();
-					throw new Exception(dlg + ERROR + "AlgHash." + REC + algoritmos + "-terminando.");
-				}
-				cadenas[1] = dlg + REC + linea + "-continuando.";
-				System.out.println(cadenas[1]);
-				ac.println(OK);
-				
-				/***** Fase 3:  *****/
-				String testCert = toHexString(mybyte);
-				ac.println(testCert);
-				cadenas[2] = dlg + "envio certificado del servidor. continuando.";
-				System.out.println(cadenas[2] + testCert);				
-
-				/***** Fase 4: *****/
-				cadenas[3] = "";
-				Long inicio = System.currentTimeMillis();
-				linea = dc.readLine();
-				byte[] llaveSimetrica = DatatypeConverter.parseBase64Binary(linea);
-				SecretKey simetrica = new SecretKeySpec(llaveSimetrica, 0, llaveSimetrica.length, algoritmos[1]);
-				cadenas[3] = dlg + "recibio y creo llave simetrica. continuando.";
-				System.out.println(cadenas[3]);
-				
-				/***** Fase 5:  *****/
-				cadenas[4]="";
-				linea = dc.readLine();
-				System.out.println(dlg + "Recibio reto del cliente:-" + linea + "-");
-				ac.println(linea);
-				System.out.println(dlg + "envio reto. continuado.");
-
-				linea = dc.readLine();
-				if ((linea.equals(OK))) {
-					cadenas[4] = dlg + "recibio confirmacion del cliente:"+ linea +"-continuado.";
-					System.out.println(cadenas[4]);
-				} else {
-					sc.close();
-					throw new Exception(dlg + ERROR + "en confirmacion de llave simetrica." + REC + "-terminando.");
-				}
-				
-				/***** Fase 6: estasorra  *****/
-				
-				 File file = new File("./data/hola.txt");
-				 OutputStream uwu;
+			
+				 OutputStream out;
 				 //init array with file length
-				 byte[] bytesArray = new byte[(int) file.length()]; 
-				 fis = new FileInputStream(file);
-		         bis = new BufferedInputStream(fis);
-		         bis.read(bytesArray,0,bytesArray.length);
-		         uwu = sc.getOutputStream();
-		         uwu.write(bytesArray,0,bytesArray.length);
-		         uwu.flush();
-				 System.out.println(bytesArray);
-				linea = dc.readLine();				
-				String cc = linea;
-				System.out.println(dlg + "recibio cc:-" + cc + "-continuado.");
-				
-				linea = dc.readLine();				
-				String clave = linea;
-				System.out.println(dlg + "recibio clave:-" + clave + "-continuado.");
-				cadenas[5] = dlg + "recibio cc y clave - continuando";
-				
-				Random rand = new Random(); 
-				int valor = rand.nextInt(1000000);
-				String strvalor = valor+"";
-				while (strvalor.length()%4!=0) strvalor += 0;
-				byte[] valorByte = toByteArray(strvalor);
-				ac.println(bytesArray);
-				cadenas[6] = dlg + "envio valor "+strvalor+" al cliente. continuado.";
-				System.out.println(cadenas[6]);
-		        
-				byte [] hmac = S.hdg(valorByte, simetrica, algoritmos[3]);
-				ac.println(toHexString(hmac ));
-				Long fin = System.currentTimeMillis();
-				Long tiempo = fin - inicio;
-				System.out.println(dlg + "envio hmac. continuado.");
-				
-				cadenas[7] = "";
-				linea = dc.readLine();	
-				if (linea.equals(OK)) {
-					cadenas[7] = dlg + "Terminando exitosamente." + linea;
-					System.out.println(cadenas[7]);
-				} else {
-					cadenas[7] = dlg + "Terminando con error" + linea;
-			        System.out.println(cadenas[7]);
-				}
-		        sc.close();
-		        monitor.liberar();
-		        synchronized(this){
-		        String log = "";
-		        for (int i=0;i<numCadenas;i++) {
-		        	log+=(cadenas[i]+"\r\n");
-		        }
-		        log+=("TTMS: " + tiempo + "\r\n//\r\n");
-		        escribirMensaje(log);}
+				 if(linea.contentEquals("LISTO")) {
+		         out = sc.getOutputStream();
+		         out.write(bytes,0,bytes.length);
+		         out.flush();
+		         ac.println(bytes.hashCode());
+				 }else {
+				ac.println(ERROR);
+				sc.close();
+				throw new Exception(dlg + ERROR + REC + linea +"-terminando.");
+				 }
+				 
 	        } catch (Exception e) {
 	        	monitor.liberar();
 	        	synchronized(this){
@@ -244,6 +138,7 @@ public class D extends Thread {
 	          	log+=(e.getMessage()+"\r\n//\r\n");
 	          	escribirMensaje(log);}
 	          }
+	        
 	}
 	
 	public static String toHexString(byte[] array) {

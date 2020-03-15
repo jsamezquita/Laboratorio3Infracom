@@ -1,15 +1,19 @@
 package main;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyPair;
 import java.security.Security;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -55,11 +59,40 @@ public class P {
 		System.out.println(MAESTRO + "Socket creado.");
 		ThreadCargaCPU tcpu = new ThreadCargaCPU();
 		tcpu.start();
+		 
+		 //init array with file length
+		 byte[] bytesArray;
+		 FileInputStream fis = new FileInputStream(file);
+		 BufferedInputStream bis = new BufferedInputStream(fis);
+         
+         
+		 System.out.println("Elija un archivo para enviar (1 o 2):");
+		 System.out.println("1.Archivo de texto 250MB");
+		 System.out.println("2.Archivo de texto 100MB");
+		 String send="";
+		 if(br.readLine().equals("1")) {
+			  
+			 send="./data/Archivo1.txt";
+		 }else {
+			 send="./data/Archivo2.txt";
+		 }
+		 File sendFile = new File(send);
+		 bytesArray = new byte[(int) sendFile.length()]; 
+		 bis.read(bytesArray,0,bytesArray.length);
+		 System.out.println("¿A cuantos clientes desea enviar el archivo?");
+		 String clientes=br.readLine();
+		 ArrayList<D> clients=new ArrayList<D>();
 		for (int i=0;true;i++) {
+			if(i>=Integer.parseInt(clientes)) {
+				for(int j=0;j<clients.size();j++) {
+					clients.get(i).notifyAll();				
+					}
+			}
 			try { 
 				Socket sc = ss.accept();
 				System.out.println(MAESTRO + "Cliente " + i + " aceptado.");
-				D d = new D(sc,i, tcpu);
+				D d = new D(sc,i, tcpu,bytesArray);
+				clients.add(d);
 				executor.execute(d);
 			} catch (IOException e) {
 				System.out.println(MAESTRO + "Error creando el socket cliente.");
