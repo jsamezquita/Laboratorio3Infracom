@@ -10,6 +10,7 @@ import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.net.Socket;
 import java.security.KeyPair;
+import java.security.MessageDigest;
 import java.security.cert.X509Certificate;
 import java.util.Random;
 
@@ -20,6 +21,8 @@ import javax.management.AttributeList;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.xml.bind.DatatypeConverter;
+
+import org.bouncycastle.util.encoders.Hex;
 
 public class D extends Thread {
 
@@ -41,31 +44,31 @@ public class D extends Thread {
 	private static File file;
 	private static X509Certificate certSer;
 	private static KeyPair keyPairServidor;
-	private ThreadCargaCPU monitor;
+	private P monitor;
 	private byte[] bytes;
-	
+
 	public static void init(X509Certificate pCertSer, KeyPair pKeyPairServidor, File pFile) {
 		certSer = pCertSer;
 		keyPairServidor = pKeyPairServidor;
 		file = pFile;
 	}
-	
-	public D (Socket csP, int idP, ThreadCargaCPU monitorP,byte[] bytes) {
-		monitor = monitorP;
+
+	public D (Socket csP, int idP,byte[] bytes) {
+
 		sc = csP;
 		dlg = new String("delegado " + idP + ": ");
 		this.bytes=bytes;
 		try {
-		mybyte = new byte[520]; 
-		mybyte = certSer.getEncoded();
+			mybyte = new byte[520]; 
+			mybyte = certSer.getEncoded();
 		} catch (Exception e) {
 			System.out.println("Error creando encoded del certificado para el thread" + dlg);
 			e.printStackTrace();
 		}
 	}
-	
 
-	
+
+
 	/*
 	 * Generacion del archivo log. 
 	 * Nota: 
@@ -73,7 +76,7 @@ public class D extends Thread {
 	 * - Es el único metodo permitido para escribir en el log.
 	 */
 	private void escribirMensaje(String pCadena) {
-		
+
 		try {
 			FileWriter fw = new FileWriter(file,true);
 			fw.write(pCadena + "\r");
@@ -88,79 +91,89 @@ public class D extends Thread {
 		String[] cadenas;
 		cadenas = new String[numCadenas];
 		String linea;
-	    System.out.println(dlg + "Empezando atencion.");
-	        try {
-	        	
-				PrintWriter ac = new PrintWriter(sc.getOutputStream() , true);
-				BufferedReader dc = new BufferedReader(new InputStreamReader(sc.getInputStream()));
-				monitor.activar();
-				/***** Fase 1:  *****/
-				linea = dc.readLine();
-				cadenas[0] = "Fase1: ";
-				if (!linea.equals(HOLA)) {
-					ac.println(ERROR);
-				    sc.close();
-					throw new Exception(dlg + ERROR + REC + linea +"-terminando.");
-				} else {
-					ac.println(OK);
-					cadenas[0] = dlg + REC + linea + "-continuando.";
-					System.out.println(cadenas[0]);
-				}
-				linea = dc.readLine();
+		System.out.println(dlg + "Empezando atencion.");
+		try {
 
-				this.wait();
-				/***** Fase 2:  *****/
-			
-				 OutputStream out;
-				 //init array with file length
-				 if(linea.contentEquals("LISTO")) {
-		         out = sc.getOutputStream();
-		         out.write(bytes,0,bytes.length);
-		         out.flush();
-		         ac.println(bytes.hashCode());
-				 }else {
+			PrintWriter ac = new PrintWriter(sc.getOutputStream() , true);
+			BufferedReader dc = new BufferedReader(new InputStreamReader(sc.getInputStream()));
+
+			/***** Fase 1:  *****/
+			linea = dc.readLine();
+			cadenas[0] = "Fase1: ";
+			if (!linea.equals(HOLA)) {
 				ac.println(ERROR);
 				sc.close();
 				throw new Exception(dlg + ERROR + REC + linea +"-terminando.");
-				 }
-				 
-	        } catch (Exception e) {
-	        	monitor.liberar();
-	        	synchronized(this){
-	        	String log = "";
-	          log+=("Transaccion Perdida");
-	          e.printStackTrace();
-	          	for(int i=0; i < numCadenas; i++) {
-	          		if(cadenas[i] != null && cadenas[i] != "") {
-	          			log+=(cadenas[i]+"\r\n");
-	          		}
-	          	}
-	          	log+=(e.getMessage()+"\r\n//\r\n");
-	          	escribirMensaje(log);}
-	          }
-	        
+			} else {
+				ac.println(OK);
+				cadenas[0] = dlg + REC + linea + "-continuando.";
+				System.out.println(cadenas[0]);
+			}
+			linea = dc.readLine();
+
+			P.dormir();
+			/***** Fase 2:  *****/
+
+
+			OutputStream out;
+			//init array with file length
+
+			if(linea.contentEquals("LISTO")) {
+				out = sc.getOutputStream();
+				out.write(bytes,0,bytes.length);
+				out.flush();
+				ac.println("");
+				MessageDigest digest = MessageDigest.getInstance("SHA-256");
+				byte[] hash = digest.digest(bytes);
+				String sha256hex = new String(Hex.encode(hash));
+				ac.println(sha256hex);
+
+			}else {
+				ac.println(ERROR);
+				sc.close();
+				throw new Exception(dlg + ERROR + REC + linea +"-terminando.");
+			}
+
+
+
+		} catch (Exception e) {
+
+			synchronized(this){
+				/*	
+				log+=("Transaccion Perdida");
+				e.printStackTrace();
+				for(int i=0; i < numCadenas; i++) {
+					if(cadenas[i] != null && cadenas[i] != "") {
+						log+=(cadenas[i]+"\r\n");
+					}
+				}
+				log+=(e.getMessage()+"\r\n//\r\n");
+				escribirMensaje(log);*/}
+		}
+
 	}
-	
+
+
 	public static String toHexString(byte[] array) {
-	    return DatatypeConverter.printBase64Binary(array);
+		return DatatypeConverter.printBase64Binary(array);
 	}
 
 	public static byte[] toByteArray(String s) {
-	    return DatatypeConverter.parseBase64Binary(s);
+		return DatatypeConverter.parseBase64Binary(s);
 	}
-	
+
 	public static double getSystemCpuLoad() throws Exception{
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		ObjectName name = ObjectName.getInstance("java.lang:type=OperatingSystem");
 		AttributeList list = mbs.getAttributes(name, new String[] {"SystemCpuLoad"});
 		if(list.isEmpty()) 	return Double.NaN;
-		
+
 		Attribute att = (Attribute) list.get(0);
 		Double val = (Double) att.getValue();
-		
+
 		if(val == -1.0) return Double.NaN;
-		
+
 		return ((int)(val *1000) /10.0);
 	}
-	
+
 }

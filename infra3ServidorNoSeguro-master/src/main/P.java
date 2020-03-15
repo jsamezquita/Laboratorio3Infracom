@@ -13,7 +13,9 @@ import java.net.Socket;
 import java.security.KeyPair;
 import java.security.Security;
 import java.security.cert.X509Certificate;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -23,7 +25,10 @@ public class P {
 	private static X509Certificate certSer; /* acceso default */
 	private static KeyPair keyPairServidor; /* acceso default */
 	private static final int numeroThreads = 25;
-	
+	private static int cont=1;
+	static Object o=new Object();
+	static Object p=new Object();
+	public static String log = "";
 	/**
 	 * @param args
 	 */
@@ -37,7 +42,7 @@ public class P {
 		System.out.println(MAESTRO + "Empezando servidor maestro en puerto " + ip);
 		// Adiciona la libreria como un proveedor de seguridad.
 		Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());		
-
+		
 		// Crea el archivo de log
 		File file = null;
 		keyPairServidor = S.grsa();
@@ -50,7 +55,9 @@ public class P {
         }
         FileWriter fw = new FileWriter(file);
         fw.close();
-        
+        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");  
+        Date date = new Date();  
+        log+="Fecha: "+formatter.format(date)+"\r\n";
         D.init(certSer, keyPairServidor, file);
         ExecutorService executor = Executors.newFixedThreadPool(numeroThreads);
         
@@ -62,8 +69,7 @@ public class P {
 		 
 		 //init array with file length
 		 byte[] bytesArray;
-		 FileInputStream fis = new FileInputStream(file);
-		 BufferedInputStream bis = new BufferedInputStream(fis);
+		
          
          
 		 System.out.println("Elija un archivo para enviar (1 o 2):");
@@ -73,25 +79,36 @@ public class P {
 		 if(br.readLine().equals("1")) {
 			  
 			 send="./data/Archivo1.txt";
+			 log+="Archivo Enviado: archivo1 \r\n";
 		 }else {
 			 send="./data/Archivo2.txt";
+			 log+="Archivo Enviado: archivo2 \r\n";
 		 }
+		 
 		 File sendFile = new File(send);
 		 bytesArray = new byte[(int) sendFile.length()]; 
+		 FileInputStream fis = new FileInputStream(sendFile);
+		 BufferedInputStream bis = new BufferedInputStream(fis);
 		 bis.read(bytesArray,0,bytesArray.length);
 		 System.out.println("¿A cuantos clientes desea enviar el archivo?");
 		 String clientes=br.readLine();
 		 ArrayList<D> clients=new ArrayList<D>();
 		for (int i=0;true;i++) {
-			if(i>=Integer.parseInt(clientes)) {
-				for(int j=0;j<clients.size();j++) {
-					clients.get(i).notifyAll();				
+			if(cont>=Integer.parseInt(clientes)) {
+				synchronized(p) {
+					p.wait();	
 					}
+				synchronized(o) {
+					o.notifyAll();
+				}
+				
 			}
+			
 			try { 
 				Socket sc = ss.accept();
 				System.out.println(MAESTRO + "Cliente " + i + " aceptado.");
-				D d = new D(sc,i, tcpu,bytesArray);
+				log+=MAESTRO + "Cliente " + i + " aceptado.";
+				D d = new D(sc,i,bytesArray);
 				clients.add(d);
 				executor.execute(d);
 			} catch (IOException e) {
@@ -100,5 +117,22 @@ public class P {
 			}
 		}
 		
+	}
+	public static void dormir() {
+		try {
+			synchronized(o) {
+				synchronized(p) {
+					
+					p.notify();
+				}
+				cont++;
+				o.wait();
+			}
+		
+			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

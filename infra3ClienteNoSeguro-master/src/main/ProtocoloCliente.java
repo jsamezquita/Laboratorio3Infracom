@@ -11,6 +11,7 @@ import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Security;
@@ -25,6 +26,8 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 import javax.xml.bind.DatatypeConverter;
+
+import org.bouncycastle.util.encoders.Hex;
 
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
@@ -53,7 +56,7 @@ public class ProtocoloCliente {
 				System.out.println("Conexion Exitosa.");
 		}
 
-		System.out.println("Listo para recivir datos del servidor");
+		System.out.println("Listo para recibir datos del servidor");
 
 		pOut.println("LISTO");
 
@@ -64,7 +67,15 @@ public class ProtocoloCliente {
 			
 			System.out.println("Recibe Valor"); 
 		}
+		byte[] valorClaro = fromServer.getBytes(); //CKS(<valor>)
+		File file = new File("./data/respuesta.txt");
+		OutputStream os = new FileOutputStream(file); 
 
+		// Starts writing the bytes in it 
+		os.write(valorClaro); 
+		System.out.println("Successfully" + " byte inserted"); 
+		
+		
 		if((fromServerH = pIn.readLine()) != null){
 			
 			if(fromServer.equals("ERROR")) 
@@ -72,27 +83,25 @@ public class ProtocoloCliente {
 			
 			System.out.println("Recibe H(Valor)"); 
 		}
+		 System.out.println(new String());
 
-
-		byte[] valorClaro = fromServer.getBytes(); //CKS(<valor>)
 		
-		int h = valorClaro.hashCode();
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			byte[] hash = digest.digest(valorClaro);
+			String sha256hex = new String(Hex.encode(hash));
 		
-		if(h == Integer.parseInt(fromServerH)){
-			System.out.println("EUREKAAAAAAAAAAAA");
+		
+		if(sha256hex.equals(fromServerH)){
+			System.out.println("Los valores hash coinciden");
 		}
 
-		File file = new File("./data/uwu.txt");
-		OutputStream os = new FileOutputStream(file); 
-
-		// Starts writing the bytes in it 
-		os.write(valorClaro); 
-		System.out.println("Successfully" + " byte inserted"); 
+	
 
 		
 		// Close the file 
 		os.close(); 
-		System.out.println("VALOR HMAC LOCAL: " + new String(valorClaro));
+		System.out.println("VALOR HMAC LOCAL: " + sha256hex);
+		System.out.println("VALOR HMAC recibido: "+fromServerH);
 	
 
 
@@ -190,14 +199,14 @@ public class ProtocoloCliente {
 	 * @return La llave publica contenida en el CD
 	 * @throws CertificateException Si hay un error al obtener el certificado
 	 */
-	private static PublicKey validar(String certificadoDigital) throws CertificateException {
+/*	private static PublicKey validar(String certificadoDigital) throws CertificateException {
 		byte[] certificadoBytes= DatatypeConverter.parseBase64Binary(certificadoDigital);
 
 		X509Certificate cert = (X509Certificate) CertificateFactory.getInstance("X.509").generateCertificate(new ByteArrayInputStream(certificadoBytes));
 		try{cert.checkValidity();}
 		catch (Exception e) {e.printStackTrace();}
 		return cert.getPublicKey();
-	}
+	}*/
 
 	/**
 	 * Cifra un texto

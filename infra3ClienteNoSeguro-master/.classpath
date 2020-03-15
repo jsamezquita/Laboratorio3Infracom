@@ -7,5 +7,7 @@
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="javax.xml.bind.jar"/>
+	<classpathentry kind="lib" path="bcpkix-jdk15on-161.jar"/>
+	<classpathentry kind="lib" path="bcprov-jdk15on-161.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
