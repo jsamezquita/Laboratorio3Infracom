@@ -36,7 +36,7 @@ public class D extends Thread {
 	public static final String ERROR = "ERROR";
 	public static final String REC = "recibio-";
 	public static final int numCadenas = 8;
-
+	public long tiempoi;
 	// Atributos
 	private Socket sc = null;
 	private String dlg;
@@ -120,6 +120,7 @@ public class D extends Thread {
 
 			if(linea.contentEquals("LISTO")) {
 				out = sc.getOutputStream();
+				tiempoi= System.currentTimeMillis();
 				out.write(bytes,0,bytes.length);
 				out.flush();
 				ac.println("");
@@ -133,9 +134,14 @@ public class D extends Thread {
 				sc.close();
 				throw new Exception(dlg + ERROR + REC + linea +"-terminando.");
 			}
-
-
-
+			long tiempo2=0;
+			linea=dc.readLine();
+			if(linea.contentEquals("OK")) {
+				 tiempo2=System.currentTimeMillis();
+				System.out.println("Tiempo de envío: "+(tiempo2-tiempoi));
+				
+			}
+			P.log(tiempoi, tiempo2);
 		} catch (Exception e) {
 
 			synchronized(this){

@@ -1,0 +1,7 @@
+Fecha: 15/03/2020 23:37:21
+Archivo Enviado: archivo2 
+Tamaño archivo: 150473728MAESTRO: Cliente 0 aceptado.MAESTRO: Cliente 1 aceptado.Tiempo de envío: 2142
+Archivo recibido exitosamente 
+Tiempo de envío: 2939
+Archivo recibido exitosamente 
+

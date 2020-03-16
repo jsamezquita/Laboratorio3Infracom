@@ -68,13 +68,14 @@ public class ProtocoloCliente {
 			System.out.println("Recibe Valor"); 
 		}
 		byte[] valorClaro = fromServer.getBytes(); //CKS(<valor>)
+	
 		File file = new File("./data/respuesta.txt");
 		OutputStream os = new FileOutputStream(file); 
 
 		// Starts writing the bytes in it 
 		os.write(valorClaro); 
-		System.out.println("Successfully" + " byte inserted"); 
 		
+		pOut.println("OK");
 		
 		if((fromServerH = pIn.readLine()) != null){
 			

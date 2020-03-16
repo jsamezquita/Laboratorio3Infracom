@@ -11,7 +11,7 @@ import java.security.cert.CertificateException;
 public class Cliente {
 	
 	public static final int PUERTO = 8080;
-	public static final String SERVIDOR = "localhost";
+	public static final String SERVIDOR = "40.76.25.123";
 	
 	public static void main(String[] args) throws IOException, CertificateException, NoSuchAlgorithmException{
 		Socket socket = null;

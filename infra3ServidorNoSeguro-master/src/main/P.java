@@ -29,6 +29,7 @@ public class P {
 	static Object o=new Object();
 	static Object p=new Object();
 	public static String log = "";
+	public static String ruta = "./resultados.txt";
 	/**
 	 * @param args
 	 */
@@ -47,7 +48,7 @@ public class P {
 		File file = null;
 		keyPairServidor = S.grsa();
 		certSer = S.gc(keyPairServidor);
-		String ruta = "./resultados.txt";
+		
    
         file = new File(ruta);
         if (!file.exists()) {
@@ -80,9 +81,13 @@ public class P {
 			  
 			 send="./data/Archivo1.txt";
 			 log+="Archivo Enviado: archivo1 \r\n";
+			 File ej=new File("./data/Archivo1.txt");
+			 log+="Tamaño archivo: "+ej.length();
 		 }else {
 			 send="./data/Archivo2.txt";
 			 log+="Archivo Enviado: archivo2 \r\n";
+			 File ej=new File("./data/Archivo2.txt");
+			 log+="Tamaño archivo: "+ej.length();
 		 }
 		 
 		 File sendFile = new File(send);
@@ -93,7 +98,16 @@ public class P {
 		 System.out.println("¿A cuantos clientes desea enviar el archivo?");
 		 String clientes=br.readLine();
 		 ArrayList<D> clients=new ArrayList<D>();
+		 try {
+				FileWriter fw1 = new FileWriter(new File(ruta),true);
+				fw1.write(log + "\r");
+				fw1.close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		 
 		for (int i=0;true;i++) {
+			
 			if(cont>=Integer.parseInt(clientes)) {
 				synchronized(p) {
 					p.wait();	
@@ -105,9 +119,17 @@ public class P {
 			}
 			
 			try { 
+				log="";
 				Socket sc = ss.accept();
 				System.out.println(MAESTRO + "Cliente " + i + " aceptado.");
 				log+=MAESTRO + "Cliente " + i + " aceptado.";
+				 try {
+						FileWriter fw1 = new FileWriter(new File(ruta),true);
+						fw1.write(log + "\r");
+						fw1.close();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				D d = new D(sc,i,bytesArray);
 				clients.add(d);
 				executor.execute(d);
@@ -132,6 +154,17 @@ public class P {
 			
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	public static synchronized void log(long t1,long t2) {
+		try {
+			log="Tiempo de envío: "+(t2-t1+"\r\n");
+			log+="Archivo recibido exitosamente \r\n";
+			FileWriter fw1 = new FileWriter(new File(ruta),true);
+			fw1.write(log + "\r");
+			fw1.close();
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
